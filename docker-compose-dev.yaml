@@ -1,0 +1,49 @@
+services:
+
+  sports2020-db:
+    build:
+      context: database/
+      dockerfile: Dockerfile
+    volumes:
+      - c:/docker/license/oe-12.7/progress-127-all.cfg:/usr/dlc/progress.cfg
+  
+  backend:
+    build:
+      context: backend/
+      dockerfile: Dockerfile      
+    volumes:
+      - c:/docker/license/oe-12.7/progress-127-all.cfg:/usr/dlc/progress.cfg
+    labels:
+      - "traefik.http.middlewares.replace-slashdata.replacepathregex.regex=^/data/(.*)"
+      - "traefik.http.middlewares.replace-slashdata.replacepathregex.replacement=/web/$$1"
+      - "traefik.http.routers.pas.rule=Host(`sports2020.bfv.io`) && PathPrefix(`/data`)"
+      - "traefik.http.routers.pas.middlewares=replace-slashdata"
+    depends_on:
+      - sports2020-db
+
+  frontend:
+    build:
+      context: frontend/
+      dockerfile: Dockerfile
+    # ports:
+    #   - 80:80
+    labels:
+      - "traefik.http.routers.ui.rule=Host(`sports2020.bfv.io`)"
+    depends_on:
+      - backend
+
+  router:
+    image: traefik:latest
+    command: 
+      - "--api.insecure=true" 
+      - "--providers.docker" 
+    ports:
+      - "80:80"
+      - "8080:8080"  # dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+networks:
+  default:
+    name: sports2020-network
+  
